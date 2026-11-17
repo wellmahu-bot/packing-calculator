@@ -82,19 +82,6 @@
   .markup h3{font-size:13.5px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
   .markup pre{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:13.5px;line-height:1.9;white-space:pre-wrap;color:var(--ink)}
   .copy{font-size:12.5px;font-weight:600;color:var(--brand);background:var(--brand-soft);padding:5px 12px;border-radius:7px;cursor:pointer;white-space:nowrap}
-  /* 导出工具行 */
-  .exportbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
-  .exportbar select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13.5px;background:#fafcfc;color:var(--ink)}
-  .btn{font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;font-weight:600}
-  .btn.on{background:var(--brand);color:#fff;border-color:var(--brand)}
-  .export-status{font-size:12px;color:var(--sub);margin-top:6px;min-height:16px}
-  .export-status.err{color:var(--bad)}
-  .print-only{display:none}
-  @media print{
-    body *{visibility:hidden}
-    #printMarkup,#printMarkup *{visibility:visible}
-    #printMarkup{position:absolute;left:0;top:0;inset:0;padding:10mm;font-family:"Microsoft YaHei",sans-serif}
-  }
   .empty{color:var(--sub);font-size:13.5px;padding:20px;text-align:center}
   footer{margin-top:26px;color:var(--sub);font-size:12px;line-height:1.7}
 </style>
@@ -216,48 +203,7 @@ function compliance(oL,oW,oH,gross){
 
 /* ===== 朝向枚举 ===== */
 const ORI=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
-let plans=[], selected=0, currentCtx=null, currentMarkup=null, lastSize='A4';
-
-/* ===== 打印尺寸（mm 宽×高） ===== */
-const SIZES={
-  A4:{w:210,h:297,label:'A4'},
-  A5:{w:148,h:210,label:'A5'},
-  L100x150:{w:100,h:150,label:'100×150mm (4×6)'},
-  L80x60:{w:80,h:60,label:'80×60mm'},
-  L100x100:{w:100,h:100,label:'100×100mm'},
-};
-
-/* ===== 可选 CDN 库（jsDelivr 主，cdnjs 备），失败则走兼容回退 ===== */
-const LIBS={
-  docx:{main:'https://fastly.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',fallback:'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',global:'docx'},
-  xlsx:{main:'https://fastly.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',fallback:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',global:'XLSX'},
-  jspdf:{main:'https://fastly.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',fallback:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',global:'jspdf'},
-};
-function ensureLib(name){
-  const cfg=LIBS[name];
-  if(window[cfg.global]) return Promise.resolve(true);
-  return new Promise(res=>{
-    const s=document.createElement('script');
-    s.src=cfg.main;
-    s.onload=()=>res(!!window[cfg.global]);
-    s.onerror=()=>{
-      const s2=document.createElement('script');
-      s2.src=cfg.fallback;
-      s2.onload=()=>res(!!window[cfg.global]);
-      s2.onerror=()=>res(false);
-      document.head.appendChild(s2);
-    };
-    document.head.appendChild(s);
-  });
-}
-function downloadBlob(blob,filename){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download=filename;
-  document.body.appendChild(a); a.click();
-  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
-}
-function stamp(){ return new Date().toISOString().slice(0,10); }
-function baseName(){ return (currentMarkup.productName||'markup').replace(/[\\/:*?"<>|\s]+/g,'_'); }
+let plans=[], selected=0, currentCtx=null;
 
 function resetForm(){
   const d={productName:'Bellutia 男士休闲裤',pL:30,pW:22,pH:8,unitNet:0.45,totalQty:300,boardThk:5,boxTare:0.8};
@@ -406,31 +352,18 @@ function renderSummary(){
   t+=`<div class="viz"><canvas id="vizCanvas" width="460" height="320"></canvas>
     <div class="cap">堆叠示意：${pl.na}(长) × ${pl.nb}(宽) × ${pl.nc}(层)，货朝向 ${round(pl.a,1)}×${round(pl.b,1)}×${round(pl.c,1)}cm</div></div>`;
 
-  const markupData=[];
-  if(ctx.productName) markupData.push({label:'品名', value:ctx.productName, bold:true});
-  markupData.push(
-    {label:'C/NO.', value:`1/${boxes}`},
-    {label:'QTY', value:`${perBox} PCS`},
-    {label:'N.W.', value:`${round(netPerBox,2)} KGS`},
-    {label:'G.W.', value:`${round(grossPerBox,2)} KGS`},
-    {label:'MEAS.', value:meas},
-    {label:'CBM', value:`${round(cbmPerBox,4)} M³`},
-  );
-  const plainText=markupData.map(d=>d.bold?d.value:`${d.label}: ${d.value}`).join('\n');
-  currentMarkup={data:markupData, plainText, boxes, lastBox, perBox, netPerBox, grossPerBox,
-    totalNet, totalGross, cbmPerBox, totalCbm, meas, productName:ctx.productName};
+  const nameLine = ctx.productName ? ctx.productName+'\n' : '';
+  const markup=
+`${nameLine}C/NO.: 1/${boxes}
+QTY: ${perBox} PCS
+N.W.: ${round(netPerBox,2)} KGS
+G.W.: ${round(grossPerBox,2)} KGS
+MEAS.: ${meas}
+CBM: ${round(cbmPerBox,4)} M³`;
 
-  const sizeOptions=Object.entries(SIZES).map(([k,s])=>`<option value="${k}" ${k===lastSize?'selected':''}>${s.label}（${s.w}×${s.h}mm）</option>`).join('');
   t+=`<div class="markup">
-    <h3>唛头（满箱标准）<span class="copy" onclick="copyMarkup()">复制文本</span></h3>
-    <div class="exportbar">
-      <select id="sizeSelect" onchange="lastSize=this.value">${sizeOptions}</select>
-      <button class="btn" onclick="exportMarkup('word')">导出 Word</button>
-      <button class="btn" onclick="exportMarkup('sheet')">导出表格</button>
-      <button class="btn" onclick="exportMarkup('pdf')">导出 PDF</button>
-    </div>
-    <pre id="markupText">${plainText}</pre>
-    <div class="export-status" id="exportStatus"></div>
+    <h3>唛头（满箱标准，可复制）<span class="copy" onclick="copyMarkup()">复制</span></h3>
+    <pre id="markupText">${markup}</pre>
     <div class="hint">末箱（${lastBox} PCS）净重 ${round(lastBox*ctx.unitNet,2)} kg、毛重 ${round(lastBox*ctx.unitNet+ctx.boxTare,2)} kg，唛头需单独标注。</div>
   </div>`;
 
@@ -470,97 +403,11 @@ function drawViz(pl){
   for(let k=1;k<pl.nc;k++){const z=k*(oH/pl.nc);poly([P(oL,0,z),P(oL,oW,z)],null,'#b6d4d1');}
 }
 
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
 function copyMarkup(){
-  const txt=currentMarkup?currentMarkup.plainText:$('markupText').innerText;
+  const txt=$('markupText').innerText;
   navigator.clipboard.writeText(txt).then(()=>{
     const b=document.querySelector('.copy'); const o=b.textContent; b.textContent='已复制'; setTimeout(()=>b.textContent=o,1200);
   });
-}
-
-function setStatus(msg,isErr){
-  const el=$('exportStatus'); if(!el) return;
-  el.textContent=msg||''; el.className='export-status'+(isErr?' err':'');
-}
-function currentSizeKey(){ const k=($('sizeSelect')&&$('sizeSelect').value)||'A4'; return SIZES[k]?k:'A4'; }
-function currentSize(){ return SIZES[currentSizeKey()]; }
-function fileTag(){ return currentSizeKey(); }
-
-async function exportMarkup(fmt){
-  if(!currentMarkup){ setStatus('请先生成装箱方案',true); return; }
-  try{
-    if(fmt==='word') await exportWord();
-    else if(fmt==='sheet') await exportSheet();
-    else if(fmt==='pdf') await exportPdf();
-  }catch(e){ setStatus('导出失败：'+e.message,true); }
-}
-
-async function exportWord(){
-  const size=currentSize(), fn=baseName()+'_'+fileTag();
-  const ok=await ensureLib('docx');
-  if(ok&&window.docx){
-    const {Document,Packer,Paragraph,TextRun,AlignmentType}=window.docx;
-    const kids=currentMarkup.data.map(d=>new Paragraph({
-      alignment:AlignmentType.CENTER,
-      children:[new TextRun({text:d.value,bold:!!d.bold,size:d.bold?28:22})],
-      spacing:{after:120}
-    }));
-    const doc=new Document({sections:[{properties:{page:{size:{width:Math.round(size.w*56.69),height:Math.round(size.h*56.69)}}},children:kids}]});
-    const blob=await Packer.toBlob(doc);
-    downloadBlob(blob,fn+'.docx');
-    setStatus('已导出 Word（.docx，'+size.label+'）');
-  }else{
-    const rows=currentMarkup.data.map(d=>`<p style="text-align:center;font-size:${d.bold?16:13}pt;font-weight:${d.bold?'bold':'normal'}">${esc(d.value)}</p>`).join('');
-    const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>@page{size:${size.w}mm ${size.h}mm;margin:15mm}body{font-family:Microsoft YaHei,sans-serif}</style></head><body>${rows}</body></html>`;
-    downloadBlob(new Blob(['\ufeff',html],{type:'application/msword'}),fn+'.doc');
-    setStatus('组件未加载，已回退导出兼容 .doc（Word/WPS 可打开）');
-  }
-}
-
-async function exportSheet(){
-  const size=currentSize(), fn=baseName()+'_'+fileTag();
-  const rows=[['项目','内容']];
-  currentMarkup.data.forEach(d=>rows.push([d.label,d.value]));
-  rows.push([],['总箱数',currentMarkup.boxes],['总净重',round(currentMarkup.totalNet,2)+' kg'],
-    ['总毛重',round(currentMarkup.totalGross,2)+' kg'],['总 CBM',round(currentMarkup.totalCbm,4)+' m³']);
-  const ok=await ensureLib('xlsx');
-  if(ok&&window.XLSX){
-    const ws=XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols']=[{wch:14},{wch:30}];
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,ws,'唛头');
-    XLSX.writeFile(wb,fn+'.xlsx');
-    setStatus('已导出表格（.xlsx，'+size.label+'）');
-  }else{
-    const csv=rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-    downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),fn+'.csv');
-    setStatus('组件未加载，已回退导出 .csv（Excel/WPS 可打开）');
-  }
-}
-
-async function exportPdf(){
-  const size=currentSize();
-  const ok=await ensureLib('jspdf');
-  if(ok&&window.jspdf&&window.jspdf.jsPDF){
-    const {jsPDF}=window.jspdf;
-    const doc=new jsPDF({unit:'mm',format:[size.w,size.h]});
-    const lines=currentMarkup.data.map(d=>d.value);
-    let y=size.h/2-(lines.length*8)/2;
-    doc.setFontSize(size.w<100?10:12);
-    lines.forEach(ln=>{ doc.text(ln,size.w/2,y,{align:'center'}); y+=8; });
-    doc.save(baseName()+'_'+fileTag()+'.pdf');
-    setStatus('已导出 PDF（'+size.label+'）');
-  }else{
-    let pm=$('printMarkup');
-    if(!pm){ pm=document.createElement('div'); pm.id='printMarkup'; document.body.appendChild(pm); }
-    pm.innerHTML=currentMarkup.data.map(d=>`<div style="text-align:center;font-size:${d.bold?18:14}pt;font-weight:${d.bold?'bold':'normal'};margin:6mm 0">${esc(d.value)}</div>`).join('');
-    const st=document.createElement('style');
-    st.textContent=`@page{size:${size.w}mm ${size.h}mm;margin:10mm}`;
-    document.head.appendChild(st);
-    setTimeout(()=>window.print(),200);
-    setStatus('PDF 组件未加载，已打开打印窗口，请选择「另存为 PDF」');
-  }
 }
 
 $('productName').addEventListener('input',queryHS);
