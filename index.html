@@ -101,7 +101,7 @@
       <div class="group">
         <div class="group-title">产品信息</div>
         <div class="fields">
-          <div class="field wide"><label><b>产品品名</b>（唛头与 HS 查询用）</label><input id="productName" type="text" placeholder="如 Bellutia 男士休闲裤"><span class="unit">必填，将印在唛头首行</span></div>
+          <div class="field wide"><label><b>产品品名</b>（选填，唛头与 HS 查询用）</label><input id="productName" type="text" placeholder="如 Bellutia 男士休闲裤"><span class="unit">选填；填写后唛头首行显示品名</span></div>
           <div class="field"><label>单件长 L</label><input id="pL" type="number" step="0.1" value="30"><span class="unit">cm</span></div>
           <div class="field"><label>单件宽 W</label><input id="pW" type="number" step="0.1" value="22"><span class="unit">cm</span></div>
           <div class="field"><label>单件高 H</label><input id="pH" type="number" step="0.1" value="8"><span class="unit">cm</span></div>
@@ -219,7 +219,6 @@ function calc(){
   const unitNet=readNum('unitNet'), totalQty=readNum('totalQty');
   const thkMm=readNum('boardThk')??0, boxTare=readNum('boxTare')??0;
 
-  if(!productName){ $('err').textContent='请填写产品品名（唛头与 HS 查询需要）。'; return; }
   if([pL,pW,pH,unitNet,totalQty].some(v=>v===null||v<=0)){
     $('err').textContent='请完整填写单件尺寸、单件净重与总数量，且数值大于 0。'; return;
   }
@@ -293,7 +292,7 @@ function complianceNote(pl){
 }
 
 function renderPlans(){
-  const SHOW=25;
+  const SHOW=10;
   const shown=plans.slice(0,SHOW);
   let html='<div class="plans">';
   shown.forEach((pl,i)=>{
@@ -353,9 +352,9 @@ function renderSummary(){
   t+=`<div class="viz"><canvas id="vizCanvas" width="460" height="320"></canvas>
     <div class="cap">堆叠示意：${pl.na}(长) × ${pl.nb}(宽) × ${pl.nc}(层)，货朝向 ${round(pl.a,1)}×${round(pl.b,1)}×${round(pl.c,1)}cm</div></div>`;
 
+  const nameLine = ctx.productName ? ctx.productName+'\n' : '';
   const markup=
-`${ctx.productName}
-C/NO.: 1/${boxes}
+`${nameLine}C/NO.: 1/${boxes}
 QTY: ${perBox} PCS
 N.W.: ${round(netPerBox,2)} KGS
 G.W.: ${round(grossPerBox,2)} KGS
@@ -363,7 +362,7 @@ MEAS.: ${meas}
 CBM: ${round(cbmPerBox,4)} M³`;
 
   t+=`<div class="markup">
-    <h3>唛头（满箱标准，含品名，可复制）<span class="copy" onclick="copyMarkup()">复制</span></h3>
+    <h3>唛头（满箱标准，可复制）<span class="copy" onclick="copyMarkup()">复制</span></h3>
     <pre id="markupText">${markup}</pre>
     <div class="hint">末箱（${lastBox} PCS）净重 ${round(lastBox*ctx.unitNet,2)} kg、毛重 ${round(lastBox*ctx.unitNet+ctx.boxTare,2)} kg，唛头需单独标注。</div>
   </div>`;
