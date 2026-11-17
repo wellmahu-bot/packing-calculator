@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>外箱排箱计算器 · Packing Calculator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' fill='%230f6f6b'/%3E%3Crect x='7' y='7' width='10' height='10' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#eef2f3; --card:#ffffff; --ink:#1c2b2a; --sub:#5b6b6a; --line:#dde5e4;
+    --brand:#0f6f6b; --brand-soft:#e3f0ef; --accent:#c8792b; --good:#1f8a5b;
+    --warn:#b3402f; --radius:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Noto Sans SC",-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;padding:20px 14px 60px}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{margin-bottom:18px}
+  header h1{font-size:22px;font-weight:800;letter-spacing:.5px}
+  header p{color:var(--sub);font-size:13.5px;margin-top:4px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .card h2{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card h2 .tag{font-size:11px;font-weight:600;color:var(--brand);background:var(--brand-soft);padding:2px 8px;border-radius:20px}
+  .group{margin-bottom:16px}
+  .group-title{font-size:12.5px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;border-bottom:1px dashed var(--line);padding-bottom:6px}
+  .fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .fields.three{grid-template-columns:1fr 1fr 1fr}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:12.5px;color:var(--sub)}
+  .field label b{color:var(--ink);font-weight:600}
+  .field input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:15px;width:100%;background:#fafcfc;color:var(--ink)}
+  .field input:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+  .field .unit{font-size:11px;color:var(--sub)}
+  .btnrow{margin-top:6px;display:flex;gap:10px;flex-wrap:wrap}
+  button{border:none;border-radius:9px;padding:11px 22px;font-size:15px;font-weight:700;cursor:pointer}
+  .primary{background:var(--brand);color:#fff}
+  .ghost{background:#eef2f3;color:var(--ink)}
+  button:hover{filter:brightness(1.05)}
+  .hint{font-size:12.5px;color:var(--sub);margin-top:10px;line-height:1.6}
+  /* 结果 */
+  .inner-note{background:var(--brand-soft);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;color:#0b524f}
+  .plans{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+  .plan{border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.15s;background:#fff}
+  .plan:hover{border-color:var(--brand)}
+  .plan.active{border-color:var(--brand);background:var(--brand-soft)}
+  .plan .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .plan .name{font-weight:700;font-size:14.5px}
+  .plan .badge{font-size:11px;font-weight:700;color:#fff;background:var(--good);padding:2px 9px;border-radius:20px}
+  .plan .badge.plain{background:#9aa8a7}
+  .plan .meta{font-size:13px;color:var(--sub);margin-top:6px;display:flex;gap:18px;flex-wrap:wrap}
+  .plan .meta b{color:var(--ink)}
+  .summary table{width:100%;border-collapse:collapse;table-layout:fixed}
+  .summary th,.summary td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:14px;text-align:left}
+  .summary th{width:42%;color:var(--sub);font-weight:600;font-size:13px}
+  .summary td{font-weight:700}
+  .summary tr:last-child td{border-bottom:none}
+  .hl{color:var(--brand);font-size:16px}
+  .markup{margin-top:16px;background:#f7faf9;border:1px dashed var(--line);border-radius:10px;padding:14px}
+  .markup h3{font-size:13.5px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+  .markup pre{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:13.5px;line-height:1.9;white-space:pre-wrap;color:var(--ink)}
+  .copy{font-size:12.5px;font-weight:600;color:var(--brand);background:var(--brand-soft);padding:5px 12px;border-radius:7px;cursor:pointer}
+  .empty{color:var(--sub);font-size:13.5px;padding:20px;text-align:center}
+  .err{color:var(--warn);font-size:13px;margin-top:8px}
+  footer{margin-top:26px;color:var(--sub);font-size:12px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>外箱排箱计算器</h1>
+    <p>输入单件货品尺寸 / 数量 / 重量与外箱外径、纸板厚度，自动枚举 6 种朝向，按空间利用率推荐最佳装箱方案，并计算总重量与 CBM。</p>
+  </header>
+
+  <div class="grid">
+    <!-- ===== 输入 ===== -->
+    <div class="card">
+      <h2>输入参数 <span class="tag">单位 cm / kg / mm</span></h2>
+
+      <div class="group">
+        <div class="group-title">单件货品（内盒 / 单品）</div>
+        <div class="fields">
+          <div class="field"><label><b>长</b> L</label><input id="pL" type="number" step="0.1" value="30"><span class="unit">cm</span></div>
+          <div class="field"><label><b>宽</b> W</label><input id="pW" type="number" step="0.1" value="22"><span class="unit">cm</span></div>
+          <div class="field"><label><b>高</b> H</label><input id="pH" type="number" step="0.1" value="8"><span class="unit">cm</span></div>
+          <div class="field"><label>单件净重</label><input id="unitNet" type="number" step="0.01" value="0.45"><span class="unit">kg/件</span></div>
+          <div class="field"><label>总件数</label><input id="totalQty" type="number" step="1" value="300"><span class="unit">PCS</span></div>
+          <div class="field"><label>款号 / 品名（可选）</label><input id="styleNo" type="text" placeholder="如 Bellutia V1"></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">外箱（纸箱）</div>
+        <div class="fields">
+          <div class="field"><label><b>外径长</b> L</label><input id="oL" type="number" step="0.1" value="60"><span class="unit">cm（含纸板）</span></div>
+          <div class="field"><label><b>外径宽</b> W</label><input id="oW" type="number" step="0.1" value="42"><span class="unit">cm（含纸板）</span></div>
+          <div class="field"><label><b>外径高</b> H</label><input id="oH" type="number" step="0.1" value="36"><span class="unit">cm（含纸板）</span></div>
+          <div class="field"><label>纸板厚度</label><input id="boardThk" type="number" step="0.1" value="5"><span class="unit">mm（瓦楞纸板）</span></div>
+          <div class="field"><label>空箱自重</label><input id="boxTare" type="number" step="0.01" value="0.8"><span class="unit">kg（可选，默认0）</span></div>
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button class="primary" onclick="calc()">计算装箱方案</button>
+        <button class="ghost" onclick="resetForm()">重置示例</button>
+      </div>
+      <div class="hint">
+        说明：内径 = 外径 − 2 × 纸板厚度（长/宽/高各方向两侧各减一层）。本工具按<b>同向整齐排列</b>枚举，未做混向交错；CBM 按外箱<b>外径</b>计算（货代报关口径）。
+      </div>
+      <div class="err" id="err"></div>
+    </div>
+
+    <!-- ===== 结果 ===== -->
+    <div class="card">
+      <h2>装箱方案与汇总 <span class="tag">最佳利用率优先</span></h2>
+      <div id="result"><div class="empty">填写左侧参数后点「计算装箱方案」。</div></div>
+    </div>
+  </div>
+
+  <footer>
+    计算口径：利用率 =（每箱件数 × 单件体积）/ 内箱净容积；箱数 = ⌈总件数 / 每箱件数⌉；毛重 = 净重 + 空箱自重；CBM = 外径长×宽×高(m³) × 箱数。<br>
+    仅供排箱参考，实际请以纸箱厂内径实测、承重限制与装柜堆叠为准。
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const round = (x,n=2)=> Number(x.toFixed(n));
+
+function readNum(id){ const v=parseFloat($(id).value); return isNaN(v)?null:v; }
+
+function resetForm(){
+  const d={pL:30,pW:22,pH:8,unitNet:0.45,totalQty:300,styleNo:'',oL:60,oW:42,oH:36,boardThk:5,boxTare:0.8};
+  for(const k in d) $(k).value=d[k];
+  $('result').innerHTML='<div class="empty">填写左侧参数后点「计算装箱方案」。</div>';
+  $('err').textContent='';
+}
+
+// 6 种朝向：货品 (a,b,c) 对应内箱 (X,Y,Z)
+const ORI = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+let plans=[], selected=0;
+
+function calc(){
+  $('err').textContent='';
+  const pL=readNum('pL'),pW=readNum('pW'),pH=readNum('pH');
+  const unitNet=readNum('unitNet'), totalQty=readNum('totalQty');
+  const oL=readNum('oL'),oW=readNum('oW'),oH=readNum('oH');
+  const thkMm=readNum('boardThk')??0, boxTare=readNum('boxTare')??0;
+
+  if([pL,pW,pH,unitNet,totalQty,oL,oW,oH].some(v=>v===null||v<=0)){
+    $('err').textContent='请完整填写所有尺寸、重量与件数，且数值大于 0。'; return;
+  }
+  if(totalQty<1){$('err').textContent='总件数至少为 1。';return;}
+
+  const thk=thkMm/10; // mm -> cm
+  const inner=[oL-2*thk, oW-2*thk, oH-2*thk];
+  if(inner.some(v=>v<=0)){$('err').textContent='纸板厚度过大，内箱内径已为负，请检查。';return;}
+
+  const p=[pL,pW,pH], pVol=pL*pW*pH;
+  const iVol=inner[0]*inner[1]*inner[2];
+  plans=[];
+
+  ORI.forEach(perm=>{
+    const a=p[perm[0]], b=p[perm[1]], c=p[perm[2]];
+    const na=Math.floor(inner[0]/a), nb=Math.floor(inner[1]/b), nc=Math.floor(inner[2]/c);
+    const count=na*nb*nc;
+    if(count<1) return;
+    plans.push({
+      perm, a,b,c, na,nb,nc, count,
+      used:[round(na*a,1),round(nb*b,1),round(nc*c,1)],
+      util: count*pVol/iVol
+    });
+  });
+
+  if(plans.length===0){
+    $('result').innerHTML='<div class="empty">当前外箱内径放不下任何一件货品，请加大外箱或减小货品尺寸。</div>';
+    return;
+  }
+  plans.sort((x,y)=> y.count-x.count || y.util-x.util);
+  selected=0;
+  renderPlans(inner, iVol, {pL,pW,pH,unitNet,totalQty,oL,oW,oH,thk,boxTare});
+}
+
+function renderPlans(inner,iVol,ctx){
+  const best=plans[0];
+  let html='<div class="inner-note">内箱可用净尺寸（外径 − 2×纸板厚度）：'
+    +round(inner[0],1)+' × '+round(inner[1],1)+' × '+round(inner[2],1)+' cm　|　内箱净容积 '+round(iVol/1e6,4)+' m³</div>';
+
+  html+='<div class="plans">';
+  plans.forEach((pl,i)=>{
+    const active=i===selected?'active':'';
+    const badge=i===0?'<span class="badge">推荐</span>':'<span class="badge plain">备选</span>';
+    html+=`<div class="plan ${active}" onclick="selectPlan(${i})">
+      <div class="top"><span class="name">方案 ${i+1}：每箱 <b>${pl.count}</b> 件</span>${badge}</div>
+      <div class="meta">
+        <span>朝向：货 ${round(pl.a,1)}×${round(pl.b,1)}×${round(pl.c,1)} cm</span>
+        <span>排列：${pl.na} × ${pl.nb} × ${pl.nc}</span>
+        <span>占用：${pl.used[0]}×${pl.used[1]}×${pl.used[2]} cm</span>
+        <span>利用率 <b>${(pl.util*100).toFixed(1)}%</b></span>
+      </div>
+    </div>`;
+  });
+  html+='</div>';
+  html+=renderSummary(ctx);
+  $('result').innerHTML=html;
+}
+
+function selectPlan(i){ selected=i; renderSummary(currentCtx); }
+
+let currentCtx=null;
+function renderSummary(ctx){
+  currentCtx=ctx;
+  const pl=plans[selected];
+  const perBox=pl.count;
+  const boxes=Math.ceil(ctx.totalQty/perBox);
+  const lastBox=ctx.totalQty-(boxes-1)*perBox;
+  const netPerBox=perBox*ctx.unitNet;
+  const grossPerBox=netPerBox+ctx.boxTare;
+  const totalNet=ctx.totalQty*ctx.unitNet;
+  const totalGross=totalNet+boxes*ctx.boxTare;
+  const cbmPerBox=(ctx.oL*ctx.oW*ctx.oH)/1e6;
+  const totalCbm=cbmPerBox*boxes;
+  const meas=`${ctx.oL}×${ctx.oW}×${ctx.oH} cm`;
+
+  const rows=[
+    ['每箱件数', perBox+' PCS'],
+    ['所需箱数', boxes+' 箱（末箱 '+lastBox+' PCS）'],
+    ['每箱净重', round(netPerBox,2)+' kg'],
+    ['每箱毛重', round(grossPerBox,2)+' kg'],
+    ['总净重', round(totalNet,2)+' kg'],
+    ['总毛重', round(totalGross,2)+' kg'],
+    ['单箱 CBM', round(cbmPerBox,4)+' m³'],
+    ['总 CBM', '<span class="hl">'+round(totalCbm,4)+' m³</span>'],
+  ];
+  let t='<div class="summary"><table>';
+  rows.forEach(r=>{t+=`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`;});
+  t+='</table></div>';
+
+  const style=ctx.styleNo?ctx.styleNo+'\n':'';
+  const markup=
+`${style}C/NO.: 1/${boxes}
+QTY: ${perBox} PCS
+N.W.: ${round(netPerBox,2)} KGS
+G.W.: ${round(grossPerBox,2)} KGS
+MEAS.: ${meas}
+CBM: ${round(cbmPerBox,4)} M³`;
+
+  t+=`<div class="markup">
+    <h3>唛头（满箱标准，可复制）<span class="copy" onclick="copyMarkup()">复制</span></h3>
+    <pre id="markupText">${markup}</pre>
+    <div class="hint">末箱（${lastBox} PCS）净重 ${round(lastBox*ctx.unitNet,2)} kg、毛重 ${round(lastBox*ctx.unitNet+ctx.boxTare,2)} kg，唛头需单独标注。</div>
+  </div>`;
+  return t;
+}
+
+function copyMarkup(){
+  const txt=$('markupText').innerText;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const b=document.querySelector('.copy'); const o=b.textContent; b.textContent='已复制'; setTimeout(()=>b.textContent=o,1200);
+  });
+}
+</script>
+</body>
+</html>
